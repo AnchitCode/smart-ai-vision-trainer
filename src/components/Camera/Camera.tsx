@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { usePose } from '../../hooks/usePose';
 
 interface CameraFeedProps {
   onVideoReady?: (videoElement: HTMLVideoElement) => void;
@@ -9,6 +10,9 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onVideoReady, className 
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Initialize pose detection
+  usePose(videoRef);
 
   useEffect(() => {
     const startCamera = async () => {
@@ -67,6 +71,7 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onVideoReady, className 
       {isLoading && !error && <div className="camera-loading">Loading camera...</div>}
       <video
         ref={videoRef}
+        autoPlay
         className={`camera-video ${error ? 'hidden' : ''}`}
         style={{
           width: '100%',
