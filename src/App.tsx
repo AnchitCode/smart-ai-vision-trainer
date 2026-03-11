@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import CameraFeed from './components/Camera/Camera';
 import './App.css';
 
 function App() {
   const [cameraReady, setCameraReady] = useState(false);
 
-  const handleVideoReady = (videoElement: HTMLVideoElement) => {
+  const handleStreamReady = (_stream: MediaStream) => {
     setCameraReady(true);
-    console.log('✅ Camera feed is ready!', videoElement);
+    console.log('✅ Camera stream is ready!');
   };
 
   return (
@@ -25,7 +25,7 @@ function App() {
 
       <main className="app-main">
         <div className="camera-container">
-          <CameraFeed onVideoReady={handleVideoReady} />
+          <CameraFeed onStreamReady={handleStreamReady} />
         </div>
       </main>
 

@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { usePose } from '../../hooks/usePose';
+import PoseOverlay from '../PoseOverlay/PoseOverlay';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,12 +53,15 @@ const CameraFeed: React.FC<CameraFeedProps> = ({
   const [permissionState, setPermissionState] = useState<PermissionState>('idle');
   const [errorMessage, setErrorMessage] = useState<string>('');
 
-  // ── Start stream ────────────────────────────────────────────────────────────
+  // ── Pose detection ──────────────────────────────────────────────────────────
+  // usePose returns a stable ref; PoseOverlay reads it on every animation frame.
+  const landmarksRef = usePose(videoRef);
+
+  // ── Start camera stream ─────────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
 
     const startStream = async () => {
-      // Guard: API not available (HTTP, old browser, etc.)
       if (!navigator?.mediaDevices?.getUserMedia) {
         setPermissionState('unavailable');
         const msg = 'Camera API is not available. Please use a modern browser over HTTPS.';
@@ -74,7 +79,6 @@ const CameraFeed: React.FC<CameraFeedProps> = ({
         });
 
         if (cancelled) {
-          // Component unmounted while we were waiting — clean up immediately
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
@@ -89,7 +93,6 @@ const CameraFeed: React.FC<CameraFeedProps> = ({
         onStreamReady?.(stream);
       } catch (err) {
         if (cancelled) return;
-
         const msg = resolveErrorMessage(err);
         setErrorMessage(msg);
         setPermissionState('denied');
@@ -99,7 +102,6 @@ const CameraFeed: React.FC<CameraFeedProps> = ({
 
     startStream();
 
-    // ── Stop stream on unmount ────────────────────────────────────────────────
     return () => {
       cancelled = true;
       streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -107,15 +109,12 @@ const CameraFeed: React.FC<CameraFeedProps> = ({
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Retry handler ──────────────────────────────────────────────────────────
+  // ── Retry ───────────────────────────────────────────────────────────────────
   const handleRetry = () => {
-    setPermissionState('idle');
-    setErrorMessage('');
-    // Re-trigger by briefly toggling; parent can also just remount this component
     window.location.reload();
   };
 
-  // ─── Render ─────────────────────────────────────────────────────────────────
+  // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className={`camera-feed-wrapper ${className}`} style={styles.wrapper}>
 
@@ -132,6 +131,11 @@ const CameraFeed: React.FC<CameraFeedProps> = ({
           display: permissionState === 'granted' ? 'block' : 'none',
         }}
       />
+
+      {/* Pose landmark overlay — sits on top of the video */}
+      {permissionState === 'granted' && (
+        <PoseOverlay videoRef={videoRef} landmarksRef={landmarksRef} />
+      )}
 
       {/* Loading / requesting state */}
       {(permissionState === 'idle' || permissionState === 'requesting') && (
@@ -161,7 +165,7 @@ const CameraFeed: React.FC<CameraFeedProps> = ({
   );
 };
 
-// ─── Inline styles (zero external dependencies) ──────────────────────────────
+// ─── Inline styles ────────────────────────────────────────────────────────────
 
 const styles: Record<string, React.CSSProperties> = {
   wrapper: {

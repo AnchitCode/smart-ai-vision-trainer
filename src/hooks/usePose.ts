@@ -1,95 +1,133 @@
-import { Pose, Results } from '@mediapipe/pose';
-import { useEffect, useRef, useCallback } from 'react';
+import type { Results } from '@mediapipe/pose';
+import { useEffect, useRef, useState } from 'react';
 
-interface UsePoseOptions {
-  modelComplexity?: 0 | 1;
-  smoothLandmarks?: boolean;
-  enableSegmentation?: boolean;
-  minDetectionConfidence?: number;
-  minTrackingConfidence?: number;
-  onResults?: (results: Results) => void;
+// At runtime, Vite won't process the Pose class nicely from CJS to ESM 
+// when it's excluded from optimizeDeps. By loading it via a dynamic import or window, 
+// we bypass the "does not provide an export named 'Pose'" error.
+type PoseConstructor = typeof import('@mediapipe/pose').Pose;
+
+// NormalizedLandmark is the shape MediaPipe returns for each body keypoint.
+export interface NormalizedLandmark {
+  x: number;
+  y: number;
+  z: number;
+  visibility?: number;
 }
 
-export function usePose(
-  videoRef: React.RefObject<HTMLVideoElement>,
-  options: UsePoseOptions = {}
-) {
-  const poseRef = useRef<Pose | null>(null);
+/**
+ * usePose
+ *
+ * Attaches a MediaPipe Pose model to a <video> element and returns the latest
+ * array of 33 body landmarks on every detected frame.
+ *
+ * Key design decisions
+ * ─────────────────────
+ * • Landmarks are stored in a ref (no re-render on every frame). A lightweight
+ *   counter state triggers the consumer to re-read the ref when new landmarks
+ *   arrive – this keeps the detection loop fast.
+ * • The RAF loop is guarded by `video.readyState >= 2` (HAVE_CURRENT_DATA) so
+ *   we never send a blank frame to the model.
+ * • The RAF id is stored in a ref so the cleanup can cancel it precisely,
+ *   avoiding CPU leaks when the component unmounts.
+ */
+export function usePose(videoRef: React.RefObject<HTMLVideoElement | null>) {
+  const landmarksRef = useRef<NormalizedLandmark[]>([]);
+  // A simple counter so consumers know when to re-read landmarksRef.
+  const [, setFrameCount] = useState(0);
 
-  const {
-    modelComplexity = 1,
-    smoothLandmarks = true,
-    enableSegmentation = false,
-    minDetectionConfidence = 0.5,
-    minTrackingConfidence = 0.5,
-    onResults,
-  } = options;
-
-  // Initialize pose model
   useEffect(() => {
-    if (!videoRef.current) return;
+    let destroyed = false;
+    let rafId = 0;
 
-    try {
-      const pose = new Pose({
-        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`,
-      });
+    // ── Initialise once ───────────────────────────────────────────────────────
+    // We dynamically import the class from the module to dodge Vite's ESM static analysis.
+    let poseInstance: any = null;
 
-      pose.setOptions({
-        modelComplexity,
-        smoothLandmarks,
-        enableSegmentation,
-        minDetectionConfidence,
-        minTrackingConfidence,
-      });
+    import('@mediapipe/pose').then((mp) => {
+      // MediaPipe attaches to window.Pose in some build environments, or mp.Pose
+      const PoseClass: PoseConstructor = mp.Pose || (window as any).Pose;
 
-      // Handle pose results
-      pose.onResults((results: Results) => {
-        console.log('📍 Pose Landmarks:', results.poseLandmarks);
-        
-        // Call user's callback if provided
-        if (onResults) {
-          onResults(results);
-        }
-      });
-
-      poseRef.current = pose;
-
-      console.log('✅ Pose model initialized');
-
-      // Start pose detection
-      const sendToMediaPipe = async () => {
-        if (!videoRef.current || !poseRef.current) return;
-
-        try {
-          await poseRef.current.send({ image: videoRef.current });
-          requestAnimationFrame(sendToMediaPipe);
-        } catch (error) {
-          console.error('Pose detection error:', error);
-        }
-      };
-
-      // Wait for video to be ready
-      const video = videoRef.current;
-      if (video.readyState === 4) {
-        // Video is already ready
-        sendToMediaPipe();
-      } else {
-        // Wait for video to be ready
-        video.addEventListener('canplay', () => {
-          sendToMediaPipe();
-        }, { once: true });
+      if (!PoseClass) {
+        console.error('Failed to load MediaPipe Pose construct.');
+        return;
       }
-    } catch (error) {
-      console.error('Failed to initialize pose model:', error);
+
+      poseInstance = new PoseClass({
+        locateFile: (file: string) =>
+          `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/${file}`,
+      });
+
+      poseInstance.setOptions({
+        modelComplexity: 1,
+        smoothLandmarks: true,
+        enableSegmentation: false,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5,
+      });
+
+      poseInstance.onResults((results: Results) => {
+        if (destroyed) return;
+        if (results.poseLandmarks) {
+          landmarksRef.current = results.poseLandmarks as NormalizedLandmark[];
+          setFrameCount((n) => n + 1);
+        } else {
+          landmarksRef.current = [];
+        }
+      });
+    });
+
+    // ── Detection loop ────────────────────────────────────────────────────────
+    async function detect() {
+      if (destroyed) return;
+
+      const video = videoRef.current;
+
+      // Wait until the video element has actual pixel data before sending.
+      if (video && video.readyState >= 2 && !video.paused && poseInstance) {
+        try {
+          await poseInstance.send({ image: video });
+        } catch {
+          // Silently ignore mid-stream errors (e.g. component unmounted during
+          // an async send). The destroyed flag will stop the next iteration.
+        }
+      }
+
+      if (!destroyed) {
+        rafId = requestAnimationFrame(detect);
+      }
     }
 
-    // Cleanup
-    return () => {
-      if (poseRef.current) {
-        poseRef.current.close();
+    // ── Wait for the video to be ready before starting the loop ──────────────
+    const video = videoRef.current;
+    if (!video) return;
+
+    const startDetection = () => {
+      if (!destroyed) {
+        rafId = requestAnimationFrame(detect);
       }
     };
-  }, [videoRef, modelComplexity, smoothLandmarks, enableSegmentation, minDetectionConfidence, minTrackingConfidence, onResults]);
 
-  return poseRef;
+    // If video is already loaded, start immediately; otherwise wait.
+    if (video.readyState >= 2) {
+      startDetection();
+    } else {
+      video.addEventListener('loadeddata', startDetection, { once: true });
+    }
+
+    // ── Cleanup ───────────────────────────────────────────────────────────────
+    return () => {
+      destroyed = true;
+      cancelAnimationFrame(rafId);
+      video.removeEventListener('loadeddata', startDetection);
+      if (poseInstance) {
+        poseInstance.close();
+      }
+    };
+  // videoRef.current is intentionally omitted – ref identity is stable.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Return the ref directly. Consumers should read .current inside their
+  // own RAF loop or useEffect rather than using this as reactive state.
+  return landmarksRef;
 }
