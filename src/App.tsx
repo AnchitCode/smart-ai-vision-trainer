@@ -1,35 +1,39 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { useState } from 'react';
+import CameraFeed from './components/Camera/Camera';
+import './App.css';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [cameraReady, setCameraReady] = useState(false);
+
+  const handleVideoReady = (videoElement: HTMLVideoElement) => {
+    setCameraReady(true);
+    console.log('✅ Camera feed is ready!', videoElement);
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
+    <div className="app-container">
+      <header className="app-header">
+        <h1>AI Vision Trainer</h1>
+        <p className="status">
+          {cameraReady ? (
+            <span className="status-ready">✅ Camera Ready</span>
+          ) : (
+            <span className="status-loading">⏳ Initializing Camera...</span>
+          )}
         </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+      </header>
+
+      <main className="app-main">
+        <div className="camera-container">
+          <CameraFeed onVideoReady={handleVideoReady} />
+        </div>
+      </main>
+
+      <footer className="app-footer">
+        <p>Camera Feed Test - Confirm working before proceeding</p>
+      </footer>
+    </div>
+  );
 }
 
-export default App
+export default App;
