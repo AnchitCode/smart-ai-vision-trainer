@@ -1,5 +1,6 @@
 import type { Results } from '@mediapipe/pose';
 import { useEffect, useRef, useState } from 'react';
+import { calculateAngle } from '../engine/biomechanics/angleCalculator';
 
 // At runtime, Vite won't process the Pose class nicely from CJS to ESM 
 // when it's excluded from optimizeDeps. By loading it via a dynamic import or window, 
@@ -34,6 +35,7 @@ export function usePose(videoRef: React.RefObject<HTMLVideoElement | null>) {
   const landmarksRef = useRef<NormalizedLandmark[]>([]);
   // A simple counter so consumers know when to re-read landmarksRef.
   const [, setFrameCount] = useState(0);
+  const lastElbowLogRef = useRef<{ t: number; angle: number }>({ t: 0, angle: NaN });
 
   useEffect(() => {
     let destroyed = false;
@@ -69,6 +71,25 @@ export function usePose(videoRef: React.RefObject<HTMLVideoElement | null>) {
         if (destroyed) return;
         if (results.poseLandmarks) {
           landmarksRef.current = results.poseLandmarks as NormalizedLandmark[];
+
+          // Biomechanics: right elbow angle (shoulder-elbow-wrist => 11-13-15).
+          const shoulder = landmarksRef.current[11];
+          const elbow = landmarksRef.current[13];
+          const wrist = landmarksRef.current[15];
+
+          if (shoulder && elbow && wrist) {
+            const elbowAngle = calculateAngle(shoulder, elbow, wrist);
+            if (Number.isFinite(elbowAngle)) {
+              // Logging every frame can tank FPS in devtools; throttle a bit.
+              const now = performance.now();
+              const prev = lastElbowLogRef.current;
+              if (now - prev.t > 100 || Math.abs(elbowAngle - prev.angle) > 2) {
+                lastElbowLogRef.current = { t: now, angle: elbowAngle };
+                console.log(`Elbow Angle: ${Math.round(elbowAngle)}`);
+              }
+            }
+          }
+
           setFrameCount((n) => n + 1);
         } else {
           landmarksRef.current = [];
