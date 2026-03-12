@@ -16,6 +16,11 @@ export interface NormalizedLandmark {
   visibility?: number;
 }
 
+export type UsePoseResult = {
+  landmarks: React.RefObject<NormalizedLandmark[]>;
+  pushupCount: number;
+};
+
 /**
  * usePose
  *
@@ -32,12 +37,11 @@ export interface NormalizedLandmark {
  * • The RAF id is stored in a ref so the cleanup can cancel it precisely,
  *   avoiding CPU leaks when the component unmounts.
  */
-export function usePose(videoRef: React.RefObject<HTMLVideoElement | null>) {
+export function usePose(videoRef: React.RefObject<HTMLVideoElement | null>): UsePoseResult {
   const landmarksRef = useRef<NormalizedLandmark[]>([]);
-  // A simple counter so consumers know when to re-read landmarksRef.
-  const [, setFrameCount] = useState(0);
   const lastElbowLogRef = useRef<{ t: number; angle: number }>({ t: 0, angle: NaN });
-  const lastRepLogRef = useRef(0);
+  const [pushupCount, setPushupCount] = useState(0);
+  const pushupCountRef = useRef(0);
 
   useEffect(() => {
     let destroyed = false;
@@ -83,8 +87,9 @@ export function usePose(videoRef: React.RefObject<HTMLVideoElement | null>) {
             const elbowAngle = calculateAngle(shoulder, elbow, wrist);
             if (Number.isFinite(elbowAngle)) {
               const reps = countPushup(elbowAngle);
-              if (reps > lastRepLogRef.current) {
-                lastRepLogRef.current = reps;
+              if (reps > pushupCountRef.current) {
+                pushupCountRef.current = reps;
+                setPushupCount(reps);
                 console.log(`Push-up reps: ${reps}`);
               }
 
@@ -97,8 +102,6 @@ export function usePose(videoRef: React.RefObject<HTMLVideoElement | null>) {
               }
             }
           }
-
-          setFrameCount((n) => n + 1);
         } else {
           landmarksRef.current = [];
         }
@@ -158,5 +161,5 @@ export function usePose(videoRef: React.RefObject<HTMLVideoElement | null>) {
 
   // Return the ref directly. Consumers should read .current inside their
   // own RAF loop or useEffect rather than using this as reactive state.
-  return landmarksRef;
+  return { landmarks: landmarksRef, pushupCount };
 }

@@ -15,7 +15,6 @@ export function countPushup(elbowAngle: number): number {
   if (elbowAngle > 140 && state === 'DOWN') {
     reps += 1;
     state = 'UP';
-    console.log("Push-ups:", reps);
   }
 
   return reps;
