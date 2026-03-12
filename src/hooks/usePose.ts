@@ -4,6 +4,7 @@ import { calculateAngle } from '../engine/biomechanics/angleCalculator';
 import { countPushup } from '../engine/pushupCounter';
 import { validatePushupForm, type FormStatus } from '../engine/formValidator';
 import { speak } from '../engine/voiceCoach';
+import { recordRep } from '../engine/workoutTracker';
 
 // At runtime, Vite won't process the Pose class nicely from CJS to ESM 
 // when it's excluded from optimizeDeps. By loading it via a dynamic import or window, 
@@ -108,6 +109,9 @@ export function usePose(videoRef: React.RefObject<HTMLVideoElement | null>): Use
                 pushupCountRef.current = reps;
                 setPushupCount(reps);
                 console.log(`Push-up reps: ${reps}`);
+
+                // Record workout rep with current form status
+                recordRep(lastFormStatusRef.current);
 
                 // Voice priority:
                 // 1) Form correction (already set pendingVoiceMessage if BAD)
