@@ -56,7 +56,7 @@ const CameraFeed: React.FC<CameraFeedProps> = ({
 
   // ── Pose detection ──────────────────────────────────────────────────────────
   // usePose returns a stable ref; PoseOverlay reads it on every animation frame.
-  const { landmarks: landmarksRef, pushupCount } = usePose(videoRef);
+  const { landmarks: landmarksRef, pushupCount, formStatus } = usePose(videoRef);
 
   // ── Start camera stream ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -139,7 +139,9 @@ const CameraFeed: React.FC<CameraFeedProps> = ({
       )}
 
       {/* HUD overlay — sits on top of video/canvas */}
-      {permissionState === 'granted' && <HUD pushupCount={pushupCount} />}
+      {permissionState === 'granted' && (
+        <HUD pushupCount={pushupCount} formStatus={formStatus} />
+      )}
 
       {/* Loading / requesting state */}
       {(permissionState === 'idle' || permissionState === 'requesting') && (

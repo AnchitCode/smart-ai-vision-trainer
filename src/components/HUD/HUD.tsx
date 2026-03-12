@@ -1,15 +1,25 @@
 import React from 'react';
+import type { FormStatus } from '../../engine/formValidator';
 
 export type HUDProps = {
   pushupCount: number;
+  formStatus: FormStatus;
 };
 
-export const HUD: React.FC<HUDProps> = ({ pushupCount }) => {
+export const HUD: React.FC<HUDProps> = ({ pushupCount, formStatus }) => {
+  const isGood = formStatus === 'GOOD';
+  const formColor = isGood ? '#4ade80' : '#f97373';
+  const formLabel = isGood ? '✔ Good' : '✖ Bad';
+
   return (
     <div style={styles.container} aria-live="polite" aria-label="Workout stats">
       <div style={styles.row}>
         <span style={styles.label}>Push-ups:</span>
         <span style={styles.value}>{pushupCount}</span>
+      </div>
+      <div style={styles.row}>
+        <span style={styles.label}>Form:</span>
+        <span style={{ ...styles.value, color: formColor }}>{formLabel}</span>
       </div>
     </div>
   );

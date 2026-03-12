@@ -2,6 +2,7 @@ import type { Results } from '@mediapipe/pose';
 import { useEffect, useRef, useState } from 'react';
 import { calculateAngle } from '../engine/biomechanics/angleCalculator';
 import { countPushup } from '../engine/pushupCounter';
+import { validatePushupForm, type FormStatus } from '../engine/formValidator';
 
 // At runtime, Vite won't process the Pose class nicely from CJS to ESM 
 // when it's excluded from optimizeDeps. By loading it via a dynamic import or window, 
@@ -19,6 +20,7 @@ export interface NormalizedLandmark {
 export type UsePoseResult = {
   landmarks: React.RefObject<NormalizedLandmark[]>;
   pushupCount: number;
+  formStatus: FormStatus;
 };
 
 /**
@@ -42,6 +44,8 @@ export function usePose(videoRef: React.RefObject<HTMLVideoElement | null>): Use
   const lastElbowLogRef = useRef<{ t: number; angle: number }>({ t: 0, angle: NaN });
   const [pushupCount, setPushupCount] = useState(0);
   const pushupCountRef = useRef(0);
+   const [formStatus, setFormStatus] = useState<FormStatus>('GOOD');
+  const lastFormStatusRef = useRef<FormStatus>('GOOD');
 
   useEffect(() => {
     let destroyed = false;
@@ -77,6 +81,13 @@ export function usePose(videoRef: React.RefObject<HTMLVideoElement | null>): Use
         if (destroyed) return;
         if (results.poseLandmarks) {
           landmarksRef.current = results.poseLandmarks as NormalizedLandmark[];
+
+          // ── Form validation (body straightness via hip angle) ───────────────
+          const status = validatePushupForm(landmarksRef.current);
+          if (status !== lastFormStatusRef.current) {
+            lastFormStatusRef.current = status;
+            setFormStatus(status);
+          }
 
           // Biomechanics: right elbow angle (shoulder-elbow-wrist => 11-13-15).
           const shoulder = landmarksRef.current[11];
@@ -161,5 +172,5 @@ export function usePose(videoRef: React.RefObject<HTMLVideoElement | null>): Use
 
   // Return the ref directly. Consumers should read .current inside their
   // own RAF loop or useEffect rather than using this as reactive state.
-  return { landmarks: landmarksRef, pushupCount };
+  return { landmarks: landmarksRef, pushupCount, formStatus };
 }
