@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { calculateAngle } from '../engine/biomechanics/angleCalculator';
 import { countPushup } from '../engine/pushupCounter';
 import { validatePushupForm, type FormStatus } from '../engine/formValidator';
+import { speak } from '../engine/voiceCoach';
 
 // At runtime, Vite won't process the Pose class nicely from CJS to ESM 
 // when it's excluded from optimizeDeps. By loading it via a dynamic import or window, 
@@ -82,11 +83,16 @@ export function usePose(videoRef: React.RefObject<HTMLVideoElement | null>): Use
         if (results.poseLandmarks) {
           landmarksRef.current = results.poseLandmarks as NormalizedLandmark[];
 
+          let pendingVoiceMessage: string | null = null;
+
           // ── Form validation (body straightness via hip angle) ───────────────
           const status = validatePushupForm(landmarksRef.current);
           if (status !== lastFormStatusRef.current) {
             lastFormStatusRef.current = status;
             setFormStatus(status);
+            if (status === 'BAD') {
+              pendingVoiceMessage = 'Keep your back straight';
+            }
           }
 
           // Biomechanics: right elbow angle (shoulder-elbow-wrist => 11-13-15).
@@ -102,6 +108,18 @@ export function usePose(videoRef: React.RefObject<HTMLVideoElement | null>): Use
                 pushupCountRef.current = reps;
                 setPushupCount(reps);
                 console.log(`Push-up reps: ${reps}`);
+
+                // Voice priority:
+                // 1) Form correction (already set pendingVoiceMessage if BAD)
+                // 2) Rep encouragement
+                // 3) Every-5-reps motivation
+                if (!pendingVoiceMessage) {
+                  if (reps % 5 === 0) {
+                    pendingVoiceMessage = `You have completed ${reps} push ups. Keep going`;
+                  } else {
+                    pendingVoiceMessage = 'Great rep';
+                  }
+                }
               }
 
               // Logging every frame can tank FPS in devtools; throttle a bit.
@@ -112,6 +130,10 @@ export function usePose(videoRef: React.RefObject<HTMLVideoElement | null>): Use
                 console.log(`Elbow Angle: ${Math.round(elbowAngle)}`);
               }
             }
+          }
+
+          if (pendingVoiceMessage) {
+            speak(pendingVoiceMessage);
           }
         } else {
           landmarksRef.current = [];
