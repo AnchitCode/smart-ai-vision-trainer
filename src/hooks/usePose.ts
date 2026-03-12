@@ -1,6 +1,7 @@
 import type { Results } from '@mediapipe/pose';
 import { useEffect, useRef, useState } from 'react';
 import { calculateAngle } from '../engine/biomechanics/angleCalculator';
+import { countPushup } from '../engine/pushupCounter';
 
 // At runtime, Vite won't process the Pose class nicely from CJS to ESM 
 // when it's excluded from optimizeDeps. By loading it via a dynamic import or window, 
@@ -36,6 +37,7 @@ export function usePose(videoRef: React.RefObject<HTMLVideoElement | null>) {
   // A simple counter so consumers know when to re-read landmarksRef.
   const [, setFrameCount] = useState(0);
   const lastElbowLogRef = useRef<{ t: number; angle: number }>({ t: 0, angle: NaN });
+  const lastRepLogRef = useRef(0);
 
   useEffect(() => {
     let destroyed = false;
@@ -80,6 +82,12 @@ export function usePose(videoRef: React.RefObject<HTMLVideoElement | null>) {
           if (shoulder && elbow && wrist) {
             const elbowAngle = calculateAngle(shoulder, elbow, wrist);
             if (Number.isFinite(elbowAngle)) {
+              const reps = countPushup(elbowAngle);
+              if (reps > lastRepLogRef.current) {
+                lastRepLogRef.current = reps;
+                console.log(`Push-up reps: ${reps}`);
+              }
+
               // Logging every frame can tank FPS in devtools; throttle a bit.
               const now = performance.now();
               const prev = lastElbowLogRef.current;
