@@ -1,5 +1,6 @@
 import React from 'react';
 import type { WorkoutSession } from '../engine/workoutTracker';
+import { getExerciseLabel, type ExerciseType } from '../types/exercise';
 
 type WorkoutSummaryProps = {
   session: WorkoutSession;
@@ -44,6 +45,18 @@ export const WorkoutSummary: React.FC<WorkoutSummaryProps> = ({ session }) => {
           <span style={styles.label}>Duration</span>
           <span style={styles.value}>{durationLabel}</span>
         </div>
+        <div style={styles.sectionDivider} />
+        <div style={styles.subTitle}>Reps by Exercise</div>
+        {(['PUSHUP', 'SQUAT', 'CURL', 'JUMPING_JACK'] as ExerciseType[]).map(
+          (ex) => (
+            <div key={ex} style={styles.row}>
+              <span style={styles.label}>{getExerciseLabel(ex)}</span>
+              <span style={styles.value}>
+                {session.repsByExercise[ex] ?? 0}
+              </span>
+            </div>
+          ),
+        )}
       </div>
     </div>
   );
@@ -79,6 +92,21 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: '14px',
+  },
+  subTitle: {
+    marginTop: 4,
+    marginBottom: 2,
+    fontSize: 13,
+    fontWeight: 600,
+    opacity: 0.9,
+    letterSpacing: '0.04em',
+    textTransform: 'uppercase',
+  },
+  sectionDivider: {
+    marginTop: 6,
+    marginBottom: 4,
+    height: 1,
+    background: 'rgba(148,163,255,0.35)',
   },
   row: {
     display: 'flex',

@@ -19,3 +19,8 @@ export function countPushup(elbowAngle: number): number {
 
   return reps;
 }
+
+export function resetPushupCounter() {
+  state = 'UP';
+  reps = 0;
+}

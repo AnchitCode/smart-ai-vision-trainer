@@ -3,11 +3,14 @@ import CameraFeed from './components/Camera/Camera';
 import WorkoutSummary from './components/WorkoutSummary';
 import { startWorkout, endWorkout, type WorkoutSession } from './engine/workoutTracker';
 import { speak } from './engine/voiceCoach';
+import ExerciseSelector from './components/ExerciseSelector';
+import type { ExerciseType } from './types/exercise';
 import './App.css';
 
 function App() {
   const [cameraReady, setCameraReady] = useState(false);
   const [session, setSession] = useState<WorkoutSession | null>(null);
+  const [exercise, setExercise] = useState<ExerciseType>('PUSHUP');
 
   const handleStreamReady = (_stream: MediaStream) => {
     setCameraReady(true);
@@ -39,7 +42,8 @@ function App() {
           <WorkoutSummary session={session} />
         ) : (
           <div className="camera-container">
-            <CameraFeed onStreamReady={handleStreamReady} />
+            <ExerciseSelector value={exercise} onChange={setExercise} />
+            <CameraFeed onStreamReady={handleStreamReady} exercise={exercise} />
             {cameraReady && (
               <div style={{ marginTop: '12px', textAlign: 'center' }}>
                 <button
