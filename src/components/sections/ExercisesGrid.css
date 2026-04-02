@@ -1,0 +1,106 @@
+/* ═══════════════════════════════════════════════════════════
+   EXERCISES GRID SECTION
+   ═══════════════════════════════════════════════════════════ */
+
+.exercises {
+  position: relative;
+  padding: var(--space-24) var(--space-6);
+}
+
+.exercises-header {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: var(--space-12);
+}
+
+/* ── Grid ─────────────────────────────────────────────────── */
+.exercises-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-5);
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* ── Card ─────────────────────────────────────────────────── */
+.exercise-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-8) var(--space-5);
+  border-radius: var(--radius-xl);
+  background: var(--color-bg-glass);
+  backdrop-filter: var(--backdrop-blur-sm);
+  -webkit-backdrop-filter: var(--backdrop-blur-sm);
+  border: 1px solid var(--color-border);
+  text-align: center;
+  transition: transform 250ms cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 250ms ease,
+              box-shadow 250ms ease;
+  cursor: default;
+}
+
+.exercise-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--color-border-neon);
+  box-shadow: 0 0 24px var(--color-neon-blue-glow);
+}
+
+/* Icon */
+.exercise-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
+  background: var(--gradient-neon-subtle);
+  border: 1px solid var(--color-border-neon);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-neon-cyan);
+  transition: transform 250ms ease;
+}
+
+.exercise-card:hover .exercise-icon {
+  transform: scale(1.1);
+}
+
+/* Name */
+.exercise-name {
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+/* Muscles */
+.exercise-muscles {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-weight: 500;
+  letter-spacing: var(--tracking-wide);
+}
+
+/* ── Responsive ───────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .exercises {
+    padding: var(--space-16) var(--space-4);
+  }
+
+  .exercises-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-4);
+  }
+}
+
+@media (max-width: 480px) {
+  .exercises-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .exercise-card {
+    padding: var(--space-6) var(--space-4);
+  }
+}
