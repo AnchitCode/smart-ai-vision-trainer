@@ -1,0 +1,147 @@
+/* ═══════════════════════════════════════════════════════════
+   WORKOUT PAGE STYLES
+   ═══════════════════════════════════════════════════════════ */
+
+.workout-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-6);
+  max-width: var(--max-width);
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ── Header ───────────────────────────────────────────────── */
+.workout-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+}
+
+.workout-title {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  margin: 0;
+}
+
+.workout-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-success);
+  font-weight: 500;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-success);
+  animation: pulseDot 2s ease-in-out infinite;
+}
+
+/* ── Active workout ───────────────────────────────────────── */
+.workout-active {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.workout-camera-wrapper {
+  flex: 1;
+  min-height: 400px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-lg);
+  background: var(--color-bg-secondary);
+}
+
+.workout-controls {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-3) 0;
+}
+
+/* ── Buttons ──────────────────────────────────────────────── */
+.btn-end-workout {
+  padding: var(--space-3) var(--space-8);
+  border-radius: var(--radius-full);
+  border: none;
+  background: var(--gradient-warm);
+  color: #020617;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: var(--tracking-wide);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.btn-end-workout:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(249, 115, 115, 0.3);
+}
+
+.btn-primary {
+  padding: var(--space-3) var(--space-8);
+  border-radius: var(--radius-full);
+  border: none;
+  background: var(--gradient-brand);
+  color: #fff;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: var(--tracking-wide);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-glow);
+}
+
+/* ── Summary wrapper ──────────────────────────────────────── */
+.workout-summary-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-6);
+}
+
+.workout-actions {
+  display: flex;
+  justify-content: center;
+}
+
+/* ── Responsive ───────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .workout-page {
+    padding: var(--space-4);
+  }
+
+  .workout-title {
+    font-size: var(--text-xl);
+  }
+
+  .workout-camera-wrapper {
+    min-height: 300px;
+  }
+}
+
+@media (max-width: 480px) {
+  .workout-page {
+    padding: var(--space-3);
+  }
+
+  .workout-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+}
