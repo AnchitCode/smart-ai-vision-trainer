@@ -4,6 +4,7 @@ import WorkoutSummary from './components/WorkoutSummary';
 import { startWorkout, endWorkout, type WorkoutSession } from './engine/workoutTracker';
 import { speak } from './engine/voiceCoach';
 import ExerciseSelector from './components/ExerciseSelector';
+import ThemeToggle from './components/ThemeToggle';
 import type { ExerciseType } from './types/exercise';
 import './App.css';
 
@@ -28,13 +29,16 @@ function App() {
     <div className="app-container">
       <header className="app-header">
         <h1>AI Vision Trainer</h1>
-        <p className="status">
-          {cameraReady ? (
-            <span className="status-ready">✅ Camera Ready</span>
-          ) : (
-            <span className="status-loading">⏳ Initializing Camera...</span>
-          )}
-        </p>
+        <div className="header-right">
+          <p className="status">
+            {cameraReady ? (
+              <span className="status-ready">✅ Camera Ready</span>
+            ) : (
+              <span className="status-loading">⏳ Initializing Camera...</span>
+            )}
+          </p>
+          <ThemeToggle />
+        </div>
       </header>
 
       <main className="app-main">
