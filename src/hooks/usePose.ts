@@ -26,6 +26,7 @@ export type UsePoseResult = {
   landmarks: React.RefObject<NormalizedLandmark[]>;
   reps: number;
   formStatus: FormStatus;
+  isModelLoaded: boolean;
 };
 
 export function usePose(
@@ -44,6 +45,8 @@ export function usePose(
   const exerciseRef = useRef<ExerciseType>(exercise);
 
   const lastAngleLogRef = useRef<{ t: number; angle: number }>({ t: 0, angle: NaN });
+
+  const [isModelLoaded, setIsModelLoaded] = useState(false);
 
   // keep exercise ref updated
   useEffect(() => {
@@ -83,8 +86,9 @@ export function usePose(
       });
 
       poseInstance.onResults((results: Results) => {
-
         if (destroyed) return;
+        
+        setIsModelLoaded(true);
 
         if (!results.poseLandmarks) {
           landmarksRef.current = [];
@@ -256,5 +260,5 @@ export function usePose(
 
   }, []);
 
-  return { landmarks: landmarksRef, reps, formStatus };
+  return { landmarks: landmarksRef, reps, formStatus, isModelLoaded };
 }

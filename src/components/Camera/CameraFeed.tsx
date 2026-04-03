@@ -17,6 +17,8 @@ interface CameraFeedProps {
   onError?: (error: Error) => void;
   /** Additional CSS class names for the wrapper */
   className?: string;
+  /** Called when the AI model is fully loaded and ready */
+  onModelLoaded?: () => void;
   /** Currently selected exercise */
   exercise: ExerciseType;
 }
@@ -49,6 +51,7 @@ function resolveErrorMessage(err: unknown): string {
 const CameraFeed: React.FC<CameraFeedProps> = ({
   mirrored = true,
   onStreamReady,
+  onModelLoaded,
   onError,
   className = '',
   exercise,
@@ -60,7 +63,13 @@ const CameraFeed: React.FC<CameraFeedProps> = ({
 
   // ── Pose detection ──────────────────────────────────────────────────────────
   // usePose returns a stable ref; PoseOverlay reads it on every animation frame.
-  const { landmarks: landmarksRef, reps, formStatus } = usePose(videoRef, exercise);
+  const { landmarks: landmarksRef, reps, formStatus, isModelLoaded } = usePose(videoRef, exercise);
+
+  useEffect(() => {
+    if (isModelLoaded) {
+      onModelLoaded?.();
+    }
+  }, [isModelLoaded, onModelLoaded]);
 
   // ── Start camera stream ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -147,11 +156,23 @@ const CameraFeed: React.FC<CameraFeedProps> = ({
         <HUD exercise={exercise} reps={reps} formStatus={formStatus} />
       )}
 
-      {/* Loading / requesting state */}
+      {/* Loading / requesting camera state */}
       {(permissionState === 'idle' || permissionState === 'requesting') && (
         <div style={styles.overlay} aria-live="polite">
+          <svg style={styles.cameraIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+            <circle cx={12} cy={13} r={4} />
+          </svg>
+          <p style={styles.overlayText}>Allow camera access to start workout</p>
+          <div style={styles.hintDot} />
+        </div>
+      )}
+
+      {/* Model Loading State (camera granted, model not ready) */}
+      {permissionState === 'granted' && !isModelLoaded && (
+        <div style={styles.overlay} aria-live="polite" className="camera-feed-shimmer">
           <div style={styles.spinner} />
-          <p style={styles.overlayText}>Requesting camera access…</p>
+          <p style={styles.overlayText}>Initializing AI model...</p>
         </div>
       )}
 
@@ -248,15 +269,38 @@ const styles: Record<string, React.CSSProperties> = {
     letterSpacing: '0.03em',
     transition: 'opacity 0.2s',
   },
+  cameraIcon: {
+    width: '40px',
+    height: '40px',
+    color: '#6c8eff',
+    animation: 'camera-feed-pulse 2s ease-in-out infinite alternate',
+  },
+  hintDot: {
+    width: '6px',
+    height: '6px',
+    borderRadius: '50%',
+    background: '#a78bfa',
+    animation: 'camera-feed-pulse 1s ease-in-out infinite alternate',
+    marginTop: '8px',
+  }
 };
 
-// Inject keyframe for the spinner (once, lazily)
+// Inject keyframes for the animations (once, lazily)
 if (typeof document !== 'undefined') {
   const id = 'camera-feed-keyframes';
   if (!document.getElementById(id)) {
     const style = document.createElement('style');
     style.id = id;
-    style.textContent = `@keyframes camera-feed-spin { to { transform: rotate(360deg); } }`;
+    style.textContent = `
+      @keyframes camera-feed-spin { to { transform: rotate(360deg); } }
+      @keyframes camera-feed-pulse { from { opacity: 0.5; transform: scale(0.95); } to { opacity: 1; transform: scale(1.05); } }
+      .camera-feed-shimmer {
+        background: linear-gradient(90deg, rgba(13,13,13,0.85) 0%, rgba(30,30,40,0.85) 50%, rgba(13,13,13,0.85) 100%);
+        background-size: 200% 100%;
+        animation: camera-feed-shimmer-anim 2s infinite linear;
+      }
+      @keyframes camera-feed-shimmer-anim { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+    `;
     document.head.appendChild(style);
   }
 }

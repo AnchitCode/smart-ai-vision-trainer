@@ -1,0 +1,118 @@
+/* ═══════════════════════════════════════════════════════════
+   COUNTDOWN OVERLAY
+   ═══════════════════════════════════════════════════════════ */
+
+.countdown-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-6);
+  background: rgba(6, 9, 24, 0.92);
+  backdrop-filter: var(--backdrop-blur-lg);
+  -webkit-backdrop-filter: var(--backdrop-blur-lg);
+  opacity: 1;
+  transition: opacity 450ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.countdown-overlay--fading {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ── Background glow ──────────────────────────────────────── */
+.countdown-bg-glow {
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    var(--color-neon-blue-glow) 0%,
+    rgba(0, 180, 255, 0.08) 40%,
+    transparent 70%
+  );
+  filter: blur(60px);
+  animation: countdownGlowPulse 1.8s ease-in-out infinite;
+}
+
+/* ── Center number ────────────────────────────────────────── */
+.countdown-center {
+  position: relative;
+  z-index: 1;
+  width: 200px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.countdown-number {
+  font-size: 8rem;
+  font-weight: 900;
+  font-family: var(--font-mono);
+  color: var(--color-neon-cyan);
+  text-shadow:
+    0 0 20px var(--color-neon-cyan-glow),
+    0 0 60px var(--color-neon-blue-glow);
+  animation: countdownPop 850ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  line-height: 1;
+}
+
+.countdown-go {
+  font-size: 6rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  background: var(--gradient-neon);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 30px var(--color-neon-blue-glow));
+  animation: countdownPop 700ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  line-height: 1;
+}
+
+/* ── Subtitle ─────────────────────────────────────────────── */
+.countdown-subtitle {
+  position: relative;
+  z-index: 1;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  margin: 0;
+}
+
+/* ── Keyframes ────────────────────────────────────────────── */
+@keyframes countdownPop {
+  0% {
+    opacity: 0;
+    transform: scale(2.5);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(0.9);
+  }
+  60% {
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes countdownGlowPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
