@@ -7,6 +7,8 @@ import ExerciseSelector from '../components/ExerciseSelector';
 import type { ExerciseType } from '../types/exercise';
 import CountdownOverlay from '../components/CountdownOverlay';
 import WorkoutTimer from '../components/WorkoutTimer';
+import { saveWorkoutSession } from '../services/workoutService';
+import { useAuth } from '../context/AuthContext';
 import './Workout.css';
 
 type WorkoutState =
@@ -21,6 +23,8 @@ export default function Workout() {
   const [workflowState, setWorkflowState] = useState<WorkoutState>('idle');
   const [session, setSession] = useState<WorkoutSession | null>(null);
   const [exercise, setExercise] = useState<ExerciseType>('PUSHUP');
+  const [isSaving, setIsSaving] = useState(false);
+  const { user } = useAuth();
 
   // --- Callbacks ---
 
@@ -47,11 +51,22 @@ export default function Workout() {
   const handlePause = () => setWorkflowState('paused');
   const handleResume = () => setWorkflowState('active_workout');
 
-  const handleEndWorkout = () => {
+  const handleEndWorkout = async () => {
     const finished = endWorkout();
     setSession(finished);
     speak('Workout complete. Great job!');
     setWorkflowState('idle');
+
+    if (user && finished.totalReps > 0) {
+      setIsSaving(true);
+      try {
+        await saveWorkoutSession(finished);
+      } catch (err) {
+        console.error('Save failed:', err);
+      } finally {
+        setIsSaving(false);
+      }
+    }
   };
 
   const handleNewWorkout = () => {
@@ -95,6 +110,7 @@ export default function Workout() {
       {session ? (
         <div className="workout-summary-wrapper anim-fade-in-up">
           <WorkoutSummary session={session} />
+          {isSaving && <div className="saving-indicator anim-pulse-glow">Saving to your profile...</div>}
           <div className="workout-actions">
             <button
               type="button"
