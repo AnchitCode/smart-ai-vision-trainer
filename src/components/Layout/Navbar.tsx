@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { to: '/', label: 'Home', icon: '🏠' },
   { to: '/workout', label: 'Workout', icon: '🏋️' },
   { to: '/history', label: 'History', icon: '📊' },
+  { to: '/profile', label: 'Profile', icon: '👤' },
   { to: '/settings', label: 'Settings', icon: '⚙️' },
 ];
 

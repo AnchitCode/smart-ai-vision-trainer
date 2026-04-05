@@ -3,6 +3,7 @@ import Layout from './components/Layout/Layout';
 import Home from './pages/Home';
 import Workout from './pages/Workout';
 import History from './pages/History';
+import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import Auth from './pages/Auth';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -25,6 +26,7 @@ export default function Router() {
         {/* Protected SaaS Routes */}
         <Route path="/workout" element={<ProtectedRoute><Workout /></ProtectedRoute>} />
         <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       </Route>
     </Routes>
