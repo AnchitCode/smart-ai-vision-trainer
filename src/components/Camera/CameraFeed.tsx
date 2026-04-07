@@ -1,43 +1,39 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { usePose } from '../../hooks/usePose';
 import PoseOverlay from '../PoseOverlay/PoseOverlay';
 import HUD from '../HUD/HUD';
 import type { ExerciseType } from '../../types/exercise';
+import './CameraFeed.css';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type PermissionState = 'idle' | 'requesting' | 'granted' | 'denied' | 'unavailable';
 
 interface CameraFeedProps {
-  /** Mirror the video horizontally (default: true) */
-  mirrored?: boolean;
-  /** Called once the stream has started successfully */
-  onStreamReady?: (stream: MediaStream) => void;
-  /** Called whenever an error occurs */
-  onError?: (error: Error) => void;
-  /** Additional CSS class names for the wrapper */
-  className?: string;
-  /** Called when the AI model is fully loaded and ready */
-  onModelLoaded?: () => void;
-  /** Currently selected exercise */
   exercise: ExerciseType;
+  mirrored?: boolean;
+  className?: string;
+  onStreamReady?: () => void;
+  onModelLoaded?: () => void;
+  onModelError?: (message: string) => void;
+  onError?: (error: Error) => void;
 }
 
-// ─── Helper ───────────────────────────────────────────────────────────────────
+// ─── Error message resolver ───────────────────────────────────────────────────
 
 function resolveErrorMessage(err: unknown): string {
   if (err instanceof DOMException) {
     switch (err.name) {
       case 'NotAllowedError':
-        return 'Camera access was denied. Please allow camera permissions in your browser settings and refresh.';
+        return 'Camera access was denied. Allow camera permissions in your browser settings and refresh.';
       case 'NotFoundError':
-        return 'No camera device was found on this device.';
+        return 'No camera was found on this device.';
       case 'NotReadableError':
         return 'Camera is already in use by another application.';
       case 'OverconstrainedError':
-        return 'The requested camera constraints could not be satisfied.';
+        return 'The requested camera settings could not be satisfied.';
       case 'SecurityError':
-        return 'Camera access is blocked due to a security restriction (requires HTTPS).';
+        return 'Camera access is blocked. This app requires HTTPS.';
       default:
         return `Camera error: ${err.message}`;
     }
@@ -49,260 +45,144 @@ function resolveErrorMessage(err: unknown): string {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const CameraFeed: React.FC<CameraFeedProps> = ({
+  exercise,
   mirrored = true,
+  className = '',
   onStreamReady,
   onModelLoaded,
+  onModelError,
   onError,
-  className = '',
-  exercise,
 }) => {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef  = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
   const [permissionState, setPermissionState] = useState<PermissionState>('idle');
-  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [errorMessage, setErrorMessage]       = useState<string>('');
 
   // ── Pose detection ──────────────────────────────────────────────────────────
-  // usePose returns a stable ref; PoseOverlay reads it on every animation frame.
-  const { landmarks: landmarksRef, reps, formStatus, isModelLoaded } = usePose(videoRef, exercise);
+  const { landmarks: landmarksRef, reps, formStatus, modelState, modelError } = usePose(videoRef, exercise);
 
+  // ── Bridge modelState → parent callbacks ────────────────────────────────────
   useEffect(() => {
-    if (isModelLoaded) {
-      onModelLoaded?.();
-    }
-  }, [isModelLoaded, onModelLoaded]);
+    if (modelState === 'ready')  onModelLoaded?.();
+    if (modelState === 'error' && modelError) onModelError?.(modelError);
+  }, [modelState, modelError, onModelLoaded, onModelError]);
 
   // ── Start camera stream ─────────────────────────────────────────────────────
+  // FIX: Extracted into useCallback so handleRetry can call it directly
+  // instead of reloading the whole page.
+  const startStream = useCallback(async () => {
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      const msg = 'Camera API unavailable. Use a modern browser over HTTPS.';
+      setErrorMessage(msg);
+      setPermissionState('unavailable');
+      onError?.(new Error(msg));
+      return;
+    }
+
+    setPermissionState('requesting');
+    setErrorMessage('');
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
+      });
+
+      streamRef.current = stream;
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+
+      setPermissionState('granted');
+      onStreamReady?.();
+    } catch (err) {
+      const msg = resolveErrorMessage(err);
+      setErrorMessage(msg);
+      setPermissionState('denied');
+      onError?.(err instanceof Error ? err : new Error(msg));
+    }
+  }, [onStreamReady, onError]);
+
   useEffect(() => {
-    let cancelled = false;
-
-    const startStream = async () => {
-      if (!navigator?.mediaDevices?.getUserMedia) {
-        setPermissionState('unavailable');
-        const msg = 'Camera API is not available. Please use a modern browser over HTTPS.';
-        setErrorMessage(msg);
-        onError?.(new Error(msg));
-        return;
-      }
-
-      setPermissionState('requesting');
-
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
-          audio: false,
-        });
-
-        if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-
-        streamRef.current = stream;
-
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
-
-        setPermissionState('granted');
-        onStreamReady?.(stream);
-      } catch (err) {
-        if (cancelled) return;
-        const msg = resolveErrorMessage(err);
-        setErrorMessage(msg);
-        setPermissionState('denied');
-        onError?.(err instanceof Error ? err : new Error(msg));
-      }
-    };
-
     startStream();
 
     return () => {
-      cancelled = true;
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Retry ───────────────────────────────────────────────────────────────────
-  const handleRetry = () => {
-    window.location.reload();
-  };
+  // ── Derived state ───────────────────────────────────────────────────────────
+  const isGranted       = permissionState === 'granted';
+  const isLoading       = permissionState === 'idle' || permissionState === 'requesting';
+  const isError         = permissionState === 'denied' || permissionState === 'unavailable' || modelState === 'error';
+  const isModelLoading  = isGranted && (modelState === 'idle' || modelState === 'loading');
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className={`camera-feed-wrapper ${className}`} style={styles.wrapper}>
+    <div className={`camera-feed ${className}`}>
 
-      {/* Video element — always in the DOM so the ref is stable */}
+      {/* Video — always in DOM so videoRef stays stable for usePose */}
       <video
         ref={videoRef}
         autoPlay
         playsInline
         muted
         aria-label="Live camera feed"
-        style={{
-          ...styles.video,
-          transform: mirrored ? 'scaleX(-1)' : 'none',
-          display: permissionState === 'granted' ? 'block' : 'none',
-        }}
+        className={`camera-feed__video ${mirrored ? 'camera-feed__video--mirrored' : ''} ${isGranted ? '' : 'camera-feed__video--hidden'}`}
       />
 
-      {/* Pose landmark overlay — sits on top of the video */}
-      {permissionState === 'granted' && (
+      {/* Pose overlay */}
+      {isGranted && (
         <PoseOverlay videoRef={videoRef} landmarksRef={landmarksRef} />
       )}
 
-      {/* HUD overlay — sits on top of video/canvas */}
-      {permissionState === 'granted' && (
+      {/* HUD */}
+      {isGranted && modelState === 'ready' && (
         <HUD exercise={exercise} reps={reps} formStatus={formStatus} />
       )}
 
-      {/* Loading / requesting camera state */}
-      {(permissionState === 'idle' || permissionState === 'requesting') && (
-        <div style={styles.overlay} aria-live="polite">
-          <svg style={styles.cameraIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      {/* Requesting camera */}
+      {isLoading && (
+        <div className="camera-feed__overlay" aria-live="polite">
+          <svg className="camera-feed__icon camera-feed__icon--pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
             <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
             <circle cx={12} cy={13} r={4} />
           </svg>
-          <p style={styles.overlayText}>Allow camera access to start workout</p>
-          <div style={styles.hintDot} />
+          <p className="camera-feed__overlay-text">Allow camera access to start</p>
+          <span className="camera-feed__hint-dot" />
         </div>
       )}
 
-      {/* Model Loading State (camera granted, model not ready) */}
-      {permissionState === 'granted' && !isModelLoaded && (
-        <div style={styles.overlay} aria-live="polite" className="camera-feed-shimmer">
-          <div style={styles.spinner} />
-          <p style={styles.overlayText}>Initializing AI model...</p>
+      {/* AI model loading — camera is on, model warming up */}
+      {isModelLoading && (
+        <div className="camera-feed__overlay camera-feed__overlay--shimmer" aria-live="polite">
+          <div className="camera-feed__spinner" />
+          <p className="camera-feed__overlay-text">Initializing AI model...</p>
         </div>
       )}
 
-      {/* Error / denied / unavailable state */}
-      {(permissionState === 'denied' || permissionState === 'unavailable') && (
-        <div style={styles.overlay} role="alert">
-          <svg style={styles.errorIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      {/* Error state */}
+      {isError && (
+        <div className="camera-feed__overlay" role="alert">
+          <svg className="camera-feed__icon camera-feed__icon--error" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
             <circle cx={12} cy={12} r={10} />
             <line x1={12} y1={8} x2={12} y2={12} />
             <line x1={12} y1={16} x2={12.01} y2={16} />
           </svg>
-          <p style={styles.errorText}>{errorMessage}</p>
-          {permissionState === 'denied' && (
-            <button onClick={handleRetry} style={styles.retryButton}>
-              Retry
-            </button>
-          )}
+          <p className="camera-feed__error-text">
+            {modelState === 'error' ? modelError : errorMessage}
+          </p>
+          {/* FIX: Retry re-attempts getUserMedia instead of reloading the page */}
+          <button className="camera-feed__retry-btn" onClick={startStream}>
+            Try Again
+          </button>
         </div>
       )}
     </div>
   );
 };
-
-// ─── Inline styles ────────────────────────────────────────────────────────────
-
-const styles: Record<string, React.CSSProperties> = {
-  wrapper: {
-    position: 'relative',
-    width: '100%',
-    height: '100%',
-    background: '#0d0d0d',
-    overflow: 'hidden',
-    borderRadius: '12px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  video: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover',
-  },
-  overlay: {
-    position: 'absolute',
-    inset: 0,
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '16px',
-    color: '#e0e0e0',
-    background: 'rgba(13,13,13,0.85)',
-    backdropFilter: 'blur(6px)',
-    padding: '24px',
-    textAlign: 'center',
-  },
-  overlayText: {
-    margin: 0,
-    fontSize: '14px',
-    color: '#a0a0a0',
-    letterSpacing: '0.02em',
-  },
-  spinner: {
-    width: '40px',
-    height: '40px',
-    border: '3px solid rgba(255,255,255,0.12)',
-    borderTop: '3px solid #6c8eff',
-    borderRadius: '50%',
-    animation: 'camera-feed-spin 0.9s linear infinite',
-  },
-  errorIcon: {
-    width: '48px',
-    height: '48px',
-    color: '#ff6b6b',
-    flexShrink: 0,
-  },
-  errorText: {
-    margin: 0,
-    fontSize: '14px',
-    color: '#ff9f9f',
-    maxWidth: '320px',
-    lineHeight: 1.5,
-  },
-  retryButton: {
-    marginTop: '4px',
-    padding: '8px 24px',
-    background: 'linear-gradient(135deg, #6c8eff 0%, #a78bfa 100%)',
-    border: 'none',
-    borderRadius: '8px',
-    color: '#fff',
-    fontSize: '14px',
-    fontWeight: 600,
-    cursor: 'pointer',
-    letterSpacing: '0.03em',
-    transition: 'opacity 0.2s',
-  },
-  cameraIcon: {
-    width: '40px',
-    height: '40px',
-    color: '#6c8eff',
-    animation: 'camera-feed-pulse 2s ease-in-out infinite alternate',
-  },
-  hintDot: {
-    width: '6px',
-    height: '6px',
-    borderRadius: '50%',
-    background: '#a78bfa',
-    animation: 'camera-feed-pulse 1s ease-in-out infinite alternate',
-    marginTop: '8px',
-  }
-};
-
-// Inject keyframes for the animations (once, lazily)
-if (typeof document !== 'undefined') {
-  const id = 'camera-feed-keyframes';
-  if (!document.getElementById(id)) {
-    const style = document.createElement('style');
-    style.id = id;
-    style.textContent = `
-      @keyframes camera-feed-spin { to { transform: rotate(360deg); } }
-      @keyframes camera-feed-pulse { from { opacity: 0.5; transform: scale(0.95); } to { opacity: 1; transform: scale(1.05); } }
-      .camera-feed-shimmer {
-        background: linear-gradient(90deg, rgba(13,13,13,0.85) 0%, rgba(30,30,40,0.85) 50%, rgba(13,13,13,0.85) 100%);
-        background-size: 200% 100%;
-        animation: camera-feed-shimmer-anim 2s infinite linear;
-      }
-      @keyframes camera-feed-shimmer-anim { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-    `;
-    document.head.appendChild(style);
-  }
-}
 
 export default CameraFeed;

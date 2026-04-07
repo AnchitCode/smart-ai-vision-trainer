@@ -11,35 +11,58 @@ import { saveWorkoutSession } from '../services/workoutService';
 import { useAuth } from '../context/AuthContext';
 import './Workout.css';
 
+// ─── State machine ─────────────────────────────────────────────────────────────
 type WorkoutState =
   | 'idle'
   | 'requesting_camera'
   | 'loading_model'
   | 'countdown'
   | 'active_workout'
-  | 'paused';
+  | 'paused'
+  | 'completed'
+  | 'error';
+
+// ─── Status label map ──────────────────────────────────────────────────────────
+const STATUS_LABELS: Partial<Record<WorkoutState, string>> = {
+  requesting_camera: 'Connecting camera...',
+  loading_model:     'Loading AI model...',
+  countdown:         'Get ready!',
+};
+
+// ─── State groups (typed correctly to avoid TS .includes() error) ──────────────
+// FIX: Declaring arrays as WorkoutState[] so TypeScript accepts
+// workflowState (a WorkoutState) as a valid argument to .includes().
+// Without the cast, TS infers string[] and rejects the narrower type.
+const INACTIVE_STATES: WorkoutState[] = ['idle', 'completed', 'error'];
+const TERMINAL_STATES: WorkoutState[] = ['completed', 'error'];
+const TIMER_STATES:    WorkoutState[] = ['active_workout', 'paused'];
 
 export default function Workout() {
   const [workflowState, setWorkflowState] = useState<WorkoutState>('idle');
-  const [session, setSession] = useState<WorkoutSession | null>(null);
-  const [exercise, setExercise] = useState<ExerciseType>('PUSHUP');
-  const [isSaving, setIsSaving] = useState(false);
+  const [session, setSession]             = useState<WorkoutSession | null>(null);
+  const [exercise, setExercise]           = useState<ExerciseType>('PUSHUP');
+  const [isSaving, setIsSaving]           = useState(false);
+  const [errorMessage, setErrorMessage]   = useState<string | null>(null);
   const { user } = useAuth();
 
-  // --- Callbacks ---
-
-  const handleStartWorkflow = () => {
+  // ─── Callbacks ────────────────────────────────────────────────────────────────
+  const handleStartWorkflow = useCallback(() => {
     setSession(null);
+    setErrorMessage(null);
     setWorkflowState('requesting_camera');
-  };
+  }, []);
 
   const handleStreamReady = useCallback(() => {
-    // By definition, when stream is ready, we are now waiting for model
-    setWorkflowState((prev) => (prev === 'requesting_camera' ? 'loading_model' : prev));
+    setWorkflowState((prev) => prev === 'requesting_camera' ? 'loading_model' : prev);
   }, []);
 
   const handleModelLoaded = useCallback(() => {
-    setWorkflowState((prev) => (prev === 'loading_model' ? 'countdown' : prev));
+    setWorkflowState((prev) => prev === 'loading_model' ? 'countdown' : prev);
+  }, []);
+
+  const handleModelError = useCallback((message: string) => {
+    setErrorMessage(message);
+    setWorkflowState('error');
   }, []);
 
   const handleCountdownComplete = useCallback(() => {
@@ -48,88 +71,104 @@ export default function Workout() {
     setWorkflowState('active_workout');
   }, []);
 
-  const handlePause = () => setWorkflowState('paused');
-  const handleResume = () => setWorkflowState('active_workout');
+  const handlePause  = useCallback(() => setWorkflowState('paused'), []);
+  const handleResume = useCallback(() => setWorkflowState('active_workout'), []);
 
-  const handleEndWorkout = async () => {
+  const handleEndWorkout = useCallback(async () => {
     const finished = endWorkout();
     setSession(finished);
     speak('Workout complete. Great job!');
-    setWorkflowState('idle');
+    setWorkflowState('completed');
 
     if (user && finished.totalReps > 0) {
       setIsSaving(true);
       try {
         await saveWorkoutSession(finished);
       } catch (err) {
-        console.error('Save failed:', err);
+        console.error('[Workout] Save failed:', err);
       } finally {
         setIsSaving(false);
       }
     }
-  };
+  }, [user]);
 
-  const handleNewWorkout = () => {
+  const handleNewWorkout = useCallback(() => {
     setSession(null);
+    setErrorMessage(null);
     setWorkflowState('idle');
-  };
+  }, []);
 
-  // --- Render details ---
-
-  const isCameraActive = workflowState !== 'idle';
+  // ─── Derived flags ────────────────────────────────────────────────────────────
+  const isCameraActive = !INACTIVE_STATES.includes(workflowState);
   const isTimerRunning = workflowState === 'active_workout';
-  const showTimer = workflowState === 'active_workout' || workflowState === 'paused';
+  const showTimer      = TIMER_STATES.includes(workflowState);
+  const showControls   = TIMER_STATES.includes(workflowState);
+  const statusLabel    = STATUS_LABELS[workflowState] ?? null;
 
+  // ─── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="workout-page">
-      {/* ── Header bar ── */}
+
+      {/* ── Header ── */}
       <div className="workout-header">
         <h1 className="workout-title">
-          {session ? '📋 Workout Summary' : '🏋️ Active Workout'}
+          {workflowState === 'completed' ? '📋 Workout Summary' : '🏋️ Active Workout'}
         </h1>
-        
-        {/* Top-right corner status */}
-        {!showTimer && isCameraActive && !session ? (
+
+        {statusLabel && (
           <div className="workout-status">
             <span className="status-dot" />
-            <span>
-              {workflowState === 'requesting_camera' && 'Connecting...'}
-              {workflowState === 'loading_model' && 'Initializing...'}
-              {workflowState === 'countdown' && 'Ready'}
-            </span>
+            <span>{statusLabel}</span>
           </div>
-        ) : null}
+        )}
       </div>
 
-      {/* ── Overlays ── */}
+      {/* ── Countdown overlay ── */}
       {workflowState === 'countdown' && (
         <CountdownOverlay onComplete={handleCountdownComplete} />
       )}
 
-      {/* ── Content ── */}
-      {session ? (
+      {/* ── Error state ── */}
+      {workflowState === 'error' && (
+        <div className="workout-error-box anim-fade-in-up">
+          <span className="error-icon">⚠️</span>
+          <p className="error-message">
+            {errorMessage ?? 'Something went wrong. Please try again.'}
+          </p>
+          <button type="button" className="btn-primary" onClick={handleNewWorkout}>
+            Try Again
+          </button>
+        </div>
+      )}
+
+      {/* ── Completed: Summary ── */}
+      {workflowState === 'completed' && session && (
         <div className="workout-summary-wrapper anim-fade-in-up">
           <WorkoutSummary session={session} />
-          {isSaving && <div className="saving-indicator anim-pulse-glow">Saving to your profile...</div>}
+          {isSaving && (
+            <div className="saving-indicator anim-pulse-glow">
+              Saving to your profile...
+            </div>
+          )}
           <div className="workout-actions">
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={handleNewWorkout}
-            >
+            <button type="button" className="btn-primary" onClick={handleNewWorkout}>
               Start New Workout
             </button>
           </div>
         </div>
-      ) : (
+      )}
+
+      {/* ── Active flow: idle → camera → workout ── */}
+      {!TERMINAL_STATES.includes(workflowState) && (
         <div className="workout-active anim-fade-in">
+
+          {/* Exercise selector (idle only) */}
           {workflowState === 'idle' && (
             <div className="workout-setup-box anim-fade-in-up">
               <h2 className="setup-heading">Choose Your Exercise</h2>
               <ExerciseSelector value={exercise} onChange={setExercise} />
-              
-              <button 
-                className="btn-primary btn-start-camera" 
+              <button
+                className="btn-primary btn-start-camera"
                 onClick={handleStartWorkflow}
               >
                 <span>Start Camera</span>
@@ -141,27 +180,29 @@ export default function Workout() {
             </div>
           )}
 
+          {/* Camera feed */}
           {isCameraActive && (
             <div className="workout-camera-wrapper anim-fade-in">
               {showTimer && (
                 <div className="workout-timer-overlay">
-                  <WorkoutTimer 
+                  <WorkoutTimer
                     isRunning={isTimerRunning}
                     onPause={handlePause}
                     onResume={handleResume}
                   />
                 </div>
               )}
-              {/* Camera feed handles loading & permission states visually inside */}
-              <CameraFeed 
+              <CameraFeed
                 exercise={exercise}
                 onStreamReady={handleStreamReady}
                 onModelLoaded={handleModelLoaded}
+                onModelError={handleModelError}
               />
             </div>
           )}
 
-          {(workflowState === 'active_workout' || workflowState === 'paused') && (
+          {/* End workout button */}
+          {showControls && (
             <div className="workout-controls anim-fade-in-up">
               <button
                 type="button"
@@ -172,6 +213,7 @@ export default function Workout() {
               </button>
             </div>
           )}
+
         </div>
       )}
     </div>

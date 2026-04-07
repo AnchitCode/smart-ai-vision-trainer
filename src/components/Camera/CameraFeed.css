@@ -1,0 +1,159 @@
+/* CameraFeed.css
+ * All colors use theme.css tokens — dark/light mode works automatically.
+ * Keyframes live here, not injected via JS.
+ */
+
+/* ── Wrapper ─────────────────────────────────────────────────────────────────── */
+.camera-feed {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--color-bg-primary);
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Video ───────────────────────────────────────────────────────────────────── */
+.camera-feed__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.camera-feed__video--mirrored {
+  transform: scaleX(-1);
+}
+
+/* FIX: Hide video without removing it from DOM — keeps videoRef stable for usePose */
+.camera-feed__video--hidden {
+  display: none;
+}
+
+/* ── Overlay (shared base) ───────────────────────────────────────────────────── */
+.camera-feed__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  text-align: center;
+
+  background: var(--color-overlay);
+  backdrop-filter: var(--backdrop-blur-sm);
+  -webkit-backdrop-filter: var(--backdrop-blur-sm);
+}
+
+/* ── Shimmer variant (model loading) ─────────────────────────────────────────── */
+.camera-feed__overlay--shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-primary) 0%,
+    var(--color-bg-tertiary) 50%,
+    var(--color-bg-primary) 100%
+  );
+  background-size: 200% 100%;
+  animation: camera-shimmer 2s linear infinite;
+}
+
+/* ── Overlay text ────────────────────────────────────────────────────────────── */
+.camera-feed__overlay-text {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  letter-spacing: var(--tracking-wide);
+  max-width: 280px;
+  line-height: var(--leading-relaxed);
+}
+
+/* ── Error text ──────────────────────────────────────────────────────────────── */
+.camera-feed__error-text {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-error);
+  max-width: 320px;
+  line-height: var(--leading-relaxed);
+}
+
+/* ── Icons ───────────────────────────────────────────────────────────────────── */
+.camera-feed__icon {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+.camera-feed__icon--pulse {
+  color: var(--color-accent-primary);
+  animation: camera-pulse 2s ease-in-out infinite alternate;
+}
+
+.camera-feed__icon--error {
+  color: var(--color-error);
+}
+
+/* ── Spinner ─────────────────────────────────────────────────────────────────── */
+.camera-feed__spinner {
+  width: 42px;
+  height: 42px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-accent-primary);
+  border-radius: var(--radius-full);
+  animation: camera-spin 0.85s linear infinite;
+}
+
+/* ── Hint dot ────────────────────────────────────────────────────────────────── */
+.camera-feed__hint-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-secondary);
+  animation: camera-pulse 1s ease-in-out infinite alternate;
+}
+
+/* ── Retry button ────────────────────────────────────────────────────────────── */
+.camera-feed__retry-btn {
+  margin-top: var(--space-1);
+  padding: var(--space-2) var(--space-6);
+  background: var(--gradient-brand);
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-text-inverse);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: var(--tracking-wide);
+  transition: opacity var(--transition-fast);
+}
+
+.camera-feed__retry-btn:hover {
+  opacity: 0.85;
+}
+
+.camera-feed__retry-btn:active {
+  opacity: 0.7;
+}
+
+/* ── Keyframes ───────────────────────────────────────────────────────────────── */
+
+/* FIX: Was injected via document.createElement('style') in JS.
+   CSS file is the correct place for keyframes. */
+
+@keyframes camera-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes camera-pulse {
+  from { opacity: 0.5; transform: scale(0.95); }
+  to   { opacity: 1;   transform: scale(1.05); }
+}
+
+@keyframes camera-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}

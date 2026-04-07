@@ -1,0 +1,126 @@
+/* HUD.css
+ * All tokens reference theme.css — light/dark mode works automatically.
+ */
+
+.hud {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+
+  background: var(--color-bg-glass);
+  backdrop-filter: var(--backdrop-blur-sm);
+  -webkit-backdrop-filter: var(--backdrop-blur-sm);
+
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-5);
+
+  color: var(--color-text-primary);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: var(--tracking-normal);
+
+  pointer-events: none;
+  user-select: none;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+
+  min-width: 180px;
+  box-shadow: var(--shadow-card);
+}
+
+/* ── Row ─────────────────────────────────────────────────────────────────────── */
+.hud__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-4);
+}
+
+.hud__row--reps {
+  font-size: var(--text-xl);
+}
+
+/* ── Label ───────────────────────────────────────────────────────────────────── */
+.hud__label {
+  opacity: 0.7;
+  font-weight: 500;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  color: var(--color-text-secondary);
+}
+
+/* ── Values ──────────────────────────────────────────────────────────────────── */
+.hud__value {
+  font-variant-numeric: tabular-nums;
+}
+
+.hud__exercise {
+  color: var(--color-neon-blue);
+}
+
+.hud__reps {
+  font-size: var(--text-2xl);
+  color: var(--color-text-primary);
+}
+
+/* ── Form status ─────────────────────────────────────────────────────────────── */
+.hud__form--good {
+  color: var(--color-success);
+}
+
+.hud__form--bad {
+  color: var(--color-error);
+}
+
+/* ── Phase coaching cue ──────────────────────────────────────────────────────── */
+.hud__cue {
+  margin-top: var(--space-1);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-neon-cyan);
+  text-align: center;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+
+  animation: hud-cue-appear var(--transition-fast);
+}
+
+/* ── Rep pulse animation ─────────────────────────────────────────────────────── */
+@keyframes hud-rep-pulse {
+  0%   { transform: scale(1);    color: var(--color-text-primary); }
+  40%  { transform: scale(1.35); color: var(--color-neon-cyan);    }
+  100% { transform: scale(1);    color: var(--color-text-primary); }
+}
+
+.hud__rep-pulse {
+  display: inline-block;
+  animation: hud-rep-pulse var(--transition-spring);
+}
+
+/* ── Cue appear ──────────────────────────────────────────────────────────────── */
+@keyframes hud-cue-appear {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .hud {
+    top: 10px;
+    left: 10px;
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-base);
+    min-width: 150px;
+  }
+
+  .hud__reps {
+    font-size: var(--text-xl);
+  }
+}
