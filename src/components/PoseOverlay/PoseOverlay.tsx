@@ -1,10 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import type { NormalizedLandmark } from '../../hooks/usePose';
 
-/**
- * Mediapipe connects 33 pose landmark indices in pairs.
- * Only the most visually useful ones are drawn here.
- */
+// ─── Skeleton connections ──────────────────────────────────────────────────────
 const POSE_CONNECTIONS: [number, number][] = [
   // Torso
   [11, 12], [11, 23], [12, 24], [23, 24],
@@ -18,22 +15,31 @@ const POSE_CONNECTIONS: [number, number][] = [
   [24, 26], [26, 28], [28, 30], [28, 32],
 ];
 
+const VISIBILITY_THRESHOLD = 0.5;
+const DOT_RADIUS            = 5;
+const LINE_WIDTH            = 2;
+const DOT_BORDER_WIDTH      = 2;
+
+// ─── Theme color reader ────────────────────────────────────────────────────────
+// Canvas 2D API cannot consume CSS variables — ctx.strokeStyle won't resolve
+// var(--color-neon-cyan). Read computed values once at mount and cache them.
+function readCSSVar(name: string, fallback: string): string {
+  if (typeof window === 'undefined') return fallback;
+  const value = getComputedStyle(document.documentElement)
+    .getPropertyValue(name)
+    .trim();
+  return value || fallback;
+}
+
+// ─── Props ────────────────────────────────────────────────────────────────────
+
 interface PoseOverlayProps {
-  /** Ref to the <video> element – used to size the canvas correctly. */
   videoRef: React.RefObject<HTMLVideoElement | null>;
-  /** Stable ref whose .current holds the latest landmark array. */
   landmarksRef: React.RefObject<NormalizedLandmark[]>;
 }
 
-/**
- * PoseOverlay
- *
- * Draws the 33 MediaPipe body keypoints (and connecting lines) on a <canvas>
- * that is absolutely positioned over the video element.
- *
- * The overlay runs its own requestAnimationFrame loop so it always draws at
- * the video frame rate rather than being bottlenecked by React re-renders.
- */
+// ─── Component ────────────────────────────────────────────────────────────────
+
 const PoseOverlay: React.FC<PoseOverlayProps> = ({ videoRef, landmarksRef }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -41,22 +47,40 @@ const PoseOverlay: React.FC<PoseOverlayProps> = ({ videoRef, landmarksRef }) => 
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    // FIX: Cast to non-null after the guard — TypeScript loses null-narrowing
+    // inside nested function closures, so the cast is necessary and safe here.
+    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D | null;
+    if (!ctx) return;
+
+    // From this point ctx is guaranteed non-null. Cast once so the closure
+    // doesn't re-trigger the TS18047 error on every ctx usage inside draw().
+    const safeCtx = ctx as CanvasRenderingContext2D;
+
+    // Read theme tokens once — canvas API can't use CSS vars directly
+    const colorLine = readCSSVar('--color-neon-cyan',    '#00e5ff');
+    const colorDot  = readCSSVar('--color-neon-blue',    '#00b4ff');
+    const colorRing = readCSSVar('--color-text-primary',  '#f0f2ff');
+
+    // Semi-transparent skeleton line color
+    const colorLineFaded = colorLine.startsWith('#') && colorLine.length === 7
+      ? colorLine + 'b3'
+      : 'rgba(0, 229, 255, 0.70)';
+
     let rafId = 0;
 
     function draw() {
       rafId = requestAnimationFrame(draw);
 
       const video = videoRef.current;
-      const ctx = canvas!.getContext('2d');
-      if (!ctx || !video) return;
+      if (!video) return;
 
-      // Keep the canvas resolution in sync with the live video stream.
-      const vw = video.videoWidth || canvas!.offsetWidth;
+      // Keep canvas resolution in sync with the live video stream
+      const vw = video.videoWidth  || canvas!.offsetWidth;
       const vh = video.videoHeight || canvas!.offsetHeight;
-      if (canvas!.width !== vw) canvas!.width = vw;
+      if (canvas!.width  !== vw) canvas!.width  = vw;
       if (canvas!.height !== vh) canvas!.height = vh;
 
-      ctx.clearRect(0, 0, canvas!.width, canvas!.height);
+      safeCtx.clearRect(0, 0, canvas!.width, canvas!.height);
 
       const landmarks = landmarksRef.current ?? [];
       if (landmarks.length === 0) return;
@@ -64,61 +88,63 @@ const PoseOverlay: React.FC<PoseOverlayProps> = ({ videoRef, landmarksRef }) => 
       const W = canvas!.width;
       const H = canvas!.height;
 
-      // ── Draw skeleton lines ─────────────────────────────────────────────────
-      ctx.strokeStyle = 'rgba(100, 200, 255, 0.7)';
-      ctx.lineWidth = 2;
+      // ── Skeleton lines ──────────────────────────────────────────────────────
+      safeCtx.strokeStyle = colorLineFaded;
+      safeCtx.lineWidth   = LINE_WIDTH;
+      safeCtx.lineCap     = 'round';
 
       for (const [a, b] of POSE_CONNECTIONS) {
         const lmA = landmarks[a];
         const lmB = landmarks[b];
         if (!lmA || !lmB) continue;
-        if ((lmA.visibility ?? 1) < 0.5 || (lmB.visibility ?? 1) < 0.5) continue;
+        if ((lmA.visibility ?? 1) < VISIBILITY_THRESHOLD) continue;
+        if ((lmB.visibility ?? 1) < VISIBILITY_THRESHOLD) continue;
 
-        // Mirror X to match the flipped video feed.
-        const ax = (1 - lmA.x) * W;
-        const ay = lmA.y * H;
-        const bx = (1 - lmB.x) * W;
-        const by = lmB.y * H;
-
-        ctx.beginPath();
-        ctx.moveTo(ax, ay);
-        ctx.lineTo(bx, by);
-        ctx.stroke();
+        // Mirror X to match CSS scaleX(-1) on the video element
+        safeCtx.beginPath();
+        safeCtx.moveTo((1 - lmA.x) * W, lmA.y * H);
+        safeCtx.lineTo((1 - lmB.x) * W, lmB.y * H);
+        safeCtx.stroke();
       }
 
-      // ── Draw joint dots ─────────────────────────────────────────────────────
+      // ── Joint dots ──────────────────────────────────────────────────────────
       for (const landmark of landmarks) {
-        if ((landmark.visibility ?? 1) < 0.5) continue;
+        if ((landmark.visibility ?? 1) < VISIBILITY_THRESHOLD) continue;
 
         const x = (1 - landmark.x) * W;
         const y = landmark.y * H;
 
-        ctx.beginPath();
-        ctx.arc(x, y, 6, 0, 2 * Math.PI);
-        ctx.fillStyle = '#FF6B6B';
-        ctx.fill();
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
-        ctx.stroke();
+        // Filled dot
+        safeCtx.beginPath();
+        safeCtx.arc(x, y, DOT_RADIUS, 0, 2 * Math.PI);
+        safeCtx.fillStyle = colorDot;
+        safeCtx.fill();
+
+        // Ring border for contrast
+        safeCtx.strokeStyle = colorRing;
+        safeCtx.lineWidth   = DOT_BORDER_WIDTH;
+        safeCtx.stroke();
       }
     }
 
     rafId = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(rafId);
-  // videoRef and landmarksRef both have stable identity.
+
+  // videoRef and landmarksRef are stable refs — safe to omit from deps
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <canvas
       ref={canvasRef}
+      aria-hidden="true"
       style={{
         position: 'absolute',
         top: 0,
         left: 0,
         width: '100%',
         height: '100%',
-        pointerEvents: 'none', // Let clicks fall through to the video
+        pointerEvents: 'none',
       }}
     />
   );

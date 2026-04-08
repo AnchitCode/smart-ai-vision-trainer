@@ -47,28 +47,6 @@ const EXERCISES = [
       </svg>
     ),
   },
-  {
-    name: 'Plank',
-    muscles: 'Core · Shoulders',
-    icon: (
-      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-        <line x1="6" y1="22" x2="30" y2="22" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
-        <circle cx="8" cy="18" r="3" stroke="currentColor" strokeWidth="2"/>
-        <line x1="6" y1="26" x2="10" y2="30" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-        <line x1="28" y1="22" x2="30" y2="28" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      </svg>
-    ),
-  },
-  {
-    name: 'Lunges',
-    muscles: 'Legs · Glutes',
-    icon: (
-      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-        <circle cx="18" cy="6" r="3" stroke="currentColor" strokeWidth="2"/>
-        <path d="M18 10v6M14 16l-2 10M22 16l4 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    ),
-  },
 ];
 
 export default function ExercisesGrid() {

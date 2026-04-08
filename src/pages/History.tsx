@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import './History.css';
@@ -80,7 +81,7 @@ export default function History() {
         <div className="history-empty glass-card">
           <span className="empty-icon">🌱</span>
           <p>You haven't completed any workouts yet.</p>
-          <a href="/workout" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-block', marginTop: '1rem' }}>Start Training</a>
+          <Link to="/workout" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-block', marginTop: '1rem' }}>Start Training</Link>
         </div>
       ) : (
         <div className="history-list">

@@ -21,12 +21,12 @@ export default function FinalCTA() {
         </h2>
 
         <p className="final-cta-subtext">
-          No sign-up. No downloads. Just open your browser and start
+          Free to sign up. No downloads. Just open your browser and start
           training with AI-powered precision.
         </p>
 
-        <Link to="/workout" className="final-cta-button">
-          <span>Start Your First Workout</span>
+        <Link to="/auth" className="final-cta-button">
+          <span>Create Free Account</span>
           <span className="final-cta-arrow">→</span>
         </Link>
       </ScrollReveal>

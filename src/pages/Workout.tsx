@@ -83,7 +83,7 @@ export default function Workout() {
     if (user && finished.totalReps > 0) {
       setIsSaving(true);
       try {
-        await saveWorkoutSession(finished);
+        await saveWorkoutSession(finished, user);
       } catch (err) {
         console.error('[Workout] Save failed:', err);
       } finally {
