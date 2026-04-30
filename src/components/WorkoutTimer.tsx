@@ -22,12 +22,12 @@ export default function WorkoutTimer({ isRunning, onPause, onResume }: WorkoutTi
   const accumulatedRef = useRef(0);
   const rafRef = useRef<number>(0);
 
-  const tick = useCallback(() => {
+  const tick = useCallback(function tickFn() {
     if (startRef.current !== null) {
       const now = performance.now();
       setElapsed(accumulatedRef.current + (now - startRef.current));
     }
-    rafRef.current = requestAnimationFrame(tick);
+    rafRef.current = requestAnimationFrame(tickFn);
   }, []);
 
   useEffect(() => {

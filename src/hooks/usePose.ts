@@ -85,7 +85,7 @@ export function usePose(
   const lastAngleLogRef = useRef<{ t: number; angle: number }>({ t: 0, angle: NaN });
 
   // ── Stable ref to the pose instance so cleanup can always reach it ─────────
-  const poseInstanceRef = useRef<any>(null);
+  const poseInstanceRef = useRef<InstanceType<PoseConstructor> | null>(null);
 
   // ─── Effect 1: Reset counters when exercise changes ───────────────────────
   useEffect(() => {
@@ -209,6 +209,7 @@ export function usePose(
   useEffect(() => {
     let destroyed = false;
     let rafId = 0;
+    const currentVideoRef = videoRef.current;
 
     setModelState('loading');
     setModelError(null);
@@ -218,7 +219,7 @@ export function usePose(
       .then((mp) => {
         if (destroyed) return;
 
-        const PoseClass: PoseConstructor = mp.Pose ?? (window as any).Pose;
+        const PoseClass: PoseConstructor = mp.Pose ?? (window as unknown as { Pose: PoseConstructor }).Pose;
 
         const pose = new PoseClass({
           locateFile: (file: string) =>
@@ -293,8 +294,7 @@ export function usePose(
       destroyed = true;
       cancelAnimationFrame(rafId);
 
-      const video = videoRef.current;
-      if (video) video.removeEventListener('loadeddata', () => {});
+      if (currentVideoRef) currentVideoRef.removeEventListener('loadeddata', () => {});
 
       if (poseInstanceRef.current) {
         poseInstanceRef.current.close();

@@ -44,8 +44,8 @@ export default function History() {
         
         if (error) throw error;
         setSessions(data as WorkoutSession[]);
-      } catch (err: any) {
-        setError(err.message || 'Failed to fetch history.');
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch history.');
       } finally {
         setIsLoading(false);
       }

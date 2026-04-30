@@ -35,9 +35,9 @@ export default function Profile() {
           if (setErr) throw setErr;
           setSets((setsData || []) as ExerciseSetRaw[]);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Failed fetching profile data", err);
-        setError(err.message || 'Failed to fetch profile data.');
+        setError(err instanceof Error ? err.message : 'Failed to fetch profile data.');
       } finally {
         setIsLoading(false);
       }

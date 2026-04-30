@@ -28,8 +28,8 @@ export default function Auth() {
         setErrorMsg('Success! Check your email or try logging in.');
         setIsLogin(true);
       }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'An error occurred during authentication.');
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : 'An error occurred during authentication.');
     } finally {
       setLoading(false);
     }

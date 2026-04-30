@@ -106,6 +106,7 @@ const CameraFeed: React.FC<CameraFeedProps> = ({
   }, [onStreamReady, onError]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     startStream();
 
     return () => {
