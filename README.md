@@ -1,73 +1,45 @@
-# React + TypeScript + Vite
+# 🏋️ Smart AI Vision Trainer
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**Smart AI Vision Trainer** is a futuristic, browser-based AI fitness application that democratizes access to personal training. It uses a standard webcam and Google's MediaPipe Pose model to **detect body movements in real-time**, count exercise repetitions, validate form correctness, and provide intelligent voice coaching — all running **100% client-side** with zero backend latency.
 
-Currently, two official plugins are available:
+## 🚀 Features
+- **Zero-Latency AI Tracking**: Client-side execution of Google's MediaPipe framework for real-time 3D pose estimation.
+- **Form Validation & Coaching**: Intelligent voice feedback alerting users to correct depth and angles based on active biomechanical math.
+- **Premium SaaS UI**: Glassmorphism and Neon tokens providing a highly polished, interactive Dark HUD.
+- **User Persistence**: Integrated Supabase Auth & PostgreSQL database to securely save user workout history and statistics.
+- **Privacy First**: Video data never leaves the user's browser. Everything is computed locally.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🧱 Tech Stack
+- **Frontend**: React 19, TypeScript, React Router
+- **Machine Learning**: MediaPipe Pose (WASM)
+- **Styling**: Vanilla CSS with strict variable design system
+- **Backend & Auth**: Supabase
+- **Build Tool**: Vite
 
-## React Compiler
+## 🏎️ Getting Started Locally
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/anchitgupta/smart-ai-vision-trainer.git
+   cd smart-ai-vision-trainer
+   ```
 
-## Expanding the ESLint configuration
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+3. **Environment Setup**
+   Copy the example environment file and fill in your Supabase credentials.
+   ```bash
+   cp .env.example .env.local
+   ```
+   *(Ensure you never commit your actual `.env.local` to version control!)*
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+4. **Run the Development Server**
+   ```bash
+   npm run dev
+   ```
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## 📜 License
+Distributed under the MIT License.
