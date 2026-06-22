@@ -24,3 +24,12 @@ dist-ssr
 *.sw?
 
 .vercel
+
+# Private database backups
+backups/
+*.backup
+*.dump
+prod-data-*.sql
+
+# Supabase CLI temporary files
+supabase/.temp/
